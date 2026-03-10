@@ -4,72 +4,132 @@
   <meta charset="UTF-8" />
   <title>Vote</title>
   <style>
-    body { 
-      font-family: Arial; 
-      padding: 20px; 
-      text-align: center; 
+    body {
+      font-family: Arial;
+      padding: 20px;
       background: #f7f7f7;
+      text-align: center;
     }
-    button, select { 
-      padding: 12px; 
-      margin: 6px; 
-      font-size: 18px; 
-      border-radius: 8px; 
+    select {
+      padding: 10px;
+      font-size: 16px;
+      margin: 10px;
+      border-radius: 8px;
     }
-    #msg { margin-top: 20px; font-size: 20px; font-weight: bold; }
+    button {
+      margin-top: 20px;
+      padding: 12px 20px;
+      font-size: 18px;
+      border-radius: 8px;
+      background: #0078ff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #005fcc;
+    }
+    #msg {
+      font-size: 20px;
+      font-weight: bold;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
 
 <h2>Body Region Voting</h2>
-<p>Select a region and colour:</p>
+<p>Please choose a colour for **each body region**, then press Submit.</p>
 
-<select id="region">
-  <option value="Head & Neck">Head & Neck</option>
-  <option value="Chest & Abdomen">Chest & Abdomen</option>
-  <option value="Knee/Femur & Pelvis">Knee/Femur & Pelvis</option>
-  <option value="Lower Leg">Lower Leg</option>
-</select>
+<div>
+  <h3>Head & Neck</h3>
+  <select id="head">
+    <option value="green">Green</option>
+    <option value="yellow">Yellow</option>
+    <option value="orange">Orange</option>
+    <option value="brown">Brown</option>
+    <option value="red">Red</option>
+  </select>
+</div>
 
-<select id="colour">
-  <option value="green">Green</option>
-  <option value="yellow">Yellow</option>
-  <option value="orange">Orange</option>
-  <option value="brown">Brown</option>
-  <option value="red">Red</option>
-</select>
+<div>
+  <h3>Chest & Abdomen</h3>
+  <select id="chest">
+    <option value="green">Green</option>
+    <option value="yellow">Yellow</option>
+    <option value="orange">Orange</option>
+    <option value="brown">Brown</option>
+    <option value="red">Red</option>
+  </select>
+</div>
 
-<br/>
-<button id="voteBtn">Submit Vote</button>
+<div>
+  <h3>Knee/Femur & Pelvis</h3>
+  <select id="knee">
+    <option value="green">Green</option>
+    <option value="yellow">Yellow</option>
+    <option value="orange">Orange</option>
+    <option value="brown">Brown</option>
+    <option value="red">Red</option>
+  </select>
+</div>
+
+<div>
+  <h3>Lower Leg</h3>
+  <select id="lower">
+    <option value="green">Green</option>
+    <option value="yellow">Yellow</option>
+    <option value="orange">Orange</option>
+    <option value="brown">Brown</option>
+    <option value="red">Red</option>
+  </select>
+</div>
+
+<button id="submitAll">Submit All Votes</button>
 
 <p id="msg"></p>
 
 <script type="module">
   import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
-  // 🔧 REPLACE these two with your real Supabase values
+  // ⬇️ REPLACE WITH YOUR VALUES
   const SUPABASE_URL = "https://awrcxuahafelpmhnwekm.supabase.co";
   const SUPABASE_ANON = "sb_publishable_09CHP1nkTxUbdQgNNLmdSA_w3fV4tE-";
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
-  document.getElementById("voteBtn").onclick = async () => {
-    const region = document.getElementById("region").value;
-    const colour = document.getElementById("colour").value;
+  async function sendVote(region, colour, deviceId) {
+    return supabase.from("votes").insert({
+      region,
+      colour,
+      device_id: deviceId
+    });
+  }
 
+  document.getElementById("submitAll").onclick = async () => {
     const deviceId = localStorage.getItem("deviceId") ||
                      crypto.randomUUID?.() ||
                      String(Date.now());
     localStorage.setItem("deviceId", deviceId);
 
-    const { error } = await supabase.from("votes").insert({
-      region,
-      colour,
-      device_id: deviceId
-    });
+    const votesToSubmit = [
+      { region: "Head & Neck", colour: document.getElementById("head").value },
+      { region: "Chest & Abdomen", colour: document.getElementById("chest").value },
+      { region: "Knee/Femur & Pelvis", colour: document.getElementById("knee").value },
+      { region: "Lower Leg", colour: document.getElementById("lower").value },
+    ];
+
+    let errors = 0;
+
+    for (const v of votesToSubmit) {
+      const { error } = await sendVote(v.region, v.colour, deviceId);
+      if (error) errors++;
+    }
 
     document.getElementById("msg").textContent =
-      error ? "Something went wrong." : "Vote recorded!";
+      errors === 0 
+        ? "Thank you — your votes have been submitted!"
+        : "Some votes failed to submit. Please try again.";
   };
 </script>
 
