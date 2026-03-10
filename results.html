@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Results</title>
+  <title>Live Results</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root{
@@ -15,14 +15,14 @@
       text-align: center;
       background: var(--bg);
     }
-    #sil{ width: clamp(240px, 36vw, 340px); margin:auto; display:block;}
+    #sil{ width: clamp(240px, 36vw, 360px); margin:auto; display:block;}
     .note{ color:#6b7280; font-size:14px; margin-top:8px;}
   </style>
 </head>
 <body>
 
 <h2>Live Results</h2>
-<svg id="sil" viewBox="0 0 240 480" role="img" aria-label="Human silhouette"></svg>
+<svg id="sil" viewBox="0 0 260 520" role="img" aria-label="Human silhouette with arms slightly out"></svg>
 <div class="note">Colours update automatically as votes come in.</div>
 
 <script type="module">
@@ -44,13 +44,13 @@
 
   async function refresh(){
     const { data, error } = await supabase.from("votes").select("region,colour");
-    if (error) return; // optionally display an error banner
+    if (error) return;
 
     const regions = {
-      "Head & Neck":       { green:0,yellow:0,orange:0,brown:0,red:0 },
-      "Chest & Abdomen":   { green:0,yellow:0,orange:0,brown:0,red:0 },
-      "Knee/Femur & Pelvis":{ green:0,yellow:0,orange:0,brown:0,red:0 },
-      "Lower Leg":         { green:0,yellow:0,orange:0,brown:0,red:0 }
+      "Head & Neck":         { green:0,yellow:0,orange:0,brown:0,red:0 },
+      "Chest & Abdomen":     { green:0,yellow:0,orange:0,brown:0,red:0 },
+      "Knee/Femur & Pelvis": { green:0,yellow:0,orange:0,brown:0,red:0 },
+      "Lower Leg":           { green:0,yellow:0,orange:0,brown:0,red:0 }
     };
     for(const v of data){ if(regions[v.region] && COLOURS[v.colour]!==undefined){ regions[v.region][v.colour]++; } }
 
@@ -66,105 +66,81 @@
   function drawSilhouette(fills){
     const svg = document.getElementById("sil");
 
-    // --- Realistic front-view outline (single continuous stroke) -------------
-    // Geometry notes:
-    // - Head/neck: ellipse head with gentle neck taper
-    // - Thorax: rounded ribcage, natural shoulder slope
-    // - Waist & pelvis: inward waist, pelvic flare and inguinal curve
-    // - Femur block: straightish thighs down to knee band
-    // - Lower legs: tapered shins, small ankle/foot hints
-    const outlinePath = `
-      M120 22
-      c 18 0 33 15 33 33
-      s -15 33 -33 33
-      s -33 -15 -33 -33
-      s 15 -33 33 -33
-      Z
-      M95 88
-      q 25 8 50 0
-      q 16  -6 30 14
-      q 8   10 10 28
-      l 2 50
-      q -2 20 -18 30
-      q -26 16 -74 16
-      q -30 0 -50 -12
-      q -16 -9 -18 -30
-      l 2 -50
-      q 2 -18 10 -28
-      q 14 -20 30 -14
-      Z
-      M64 226
-      q 22 14 56 14
-      q 34 0 56 -14
-      l 3 50
-      q -2 14 -10 22
-      q -22 18 -49 18
-      q -27 0 -49 -18
-      q -8  -8 -10 -22
-      Z
-      M82 296
-      l 4 86
-      q 0 18 -10 34
-      q -6 10 8 12
-      l 14 2
-      q 10 2 8 -8
-      l -2 -130
-      Z
-      M158 296
-      l -4 86
-      q 0 18 10 34
-      q 6 10 -8 12
-      l -14 2
-      q -10 2 -8 -8
-      l 2 -130
-      Z
-    `;
+    /*  Silhouette strategy:
+        - Use a clipPath that is the UNION of multiple rounded shapes:
+          head, neck, torso, arms (slightly out), hips, thighs, shins, feet.
+        - Deliberate vertical overlaps remove any seams between regions.
+        - We then paint four horizontal rectangles (your regions) and clip them.
+        - Finally, draw a single smooth outline on top.
+    */
 
-    // --- Clip path that matches the same human outline -----------------------
     const clip = `
       <clipPath id="humanClip" clipPathUnits="userSpaceOnUse">
-        <!-- head/neck -->
-        <path d="M120 22
-          c 18 0 33 15 33 33
-          s -15 33 -33 33
-          s -33 -15 -33 -33
-          s 15 -33 33 -33 Z" />
-        <!-- upper body shell (thorax/shoulders/abdomen) -->
-        <path d="M95 88 q 25 8 50 0 q 16 -6 30 14 q 8 10 10 28 l 2 50
-                 q -2 20 -18 30 q -26 16 -74 16 q -30 0 -50 -12 q -16 -9 -18 -30
-                 l 2 -50 q 2 -18 10 -28 q 14 -20 30 -14 Z" />
-        <!-- pelvis + femur junction -->
-        <path d="M64 226 q 22 14 56 14 q 34 0 56 -14 l 3 50
-                 q -2 14 -10 22 q -22 18 -49 18 q -27 0 -49 -18 q -8 -8 -10 -22 Z" />
-        <!-- left lower body + leg -->
-        <path d="M82 296 l 4 86 q 0 18 -10 34 q -6 10 8 12 l 14 2 q 10 2 8 -8 l -2 -130 Z" />
-        <!-- right lower body + leg -->
-        <path d="M158 296 l -4 86 q 0 18 10 34 q 6 10 -8 12 l -14 2 q -10 2 -8 -8 l 2 -130 Z" />
+        <!-- head (overlaps neck) -->
+        <circle cx="130" cy="54" r="24"/>
+        <!-- neck (overlaps torso) -->
+        <rect x="114" y="70" width="32" height="18" rx="6" ry="6"/>
+
+        <!-- torso / ribcage core -->
+        <rect x="70" y="82" width="120" height="110" rx="34" ry="34"/>
+
+        <!-- arms slightly out (rounded rectangles), overlapping torso -->
+        <rect x="44"  y="96" width="28"  height="132" rx="14" ry="14"/>
+        <rect x="188" y="96" width="28"  height="132" rx="14" ry="14"/>
+
+        <!-- pelvis/hip block (overlaps torso + thighs) -->
+        <rect x="78" y="180" width="104" height="72" rx="28" ry="28"/>
+
+        <!-- thighs (overlap pelvis + shins) -->
+        <rect x="92"  y="232" width="30"  height="138" rx="14" ry="14"/>
+        <rect x="138" y="232" width="30"  height="138" rx="14" ry="14"/>
+
+        <!-- shins (overlap thighs + feet) -->
+        <rect x="96"  y="350" width="24"  height="124" rx="12" ry="12"/>
+        <rect x="140" y="350" width="24"  height="124" rx="12" ry="12"/>
+
+        <!-- feet (small ellipses) -->
+        <ellipse cx="108" cy="478" rx="16" ry="8"/>
+        <ellipse cx="152" cy="478" rx="16" ry="8"/>
       </clipPath>
     `;
 
+    // A clean outline approximating the union above (single stroke)
+    const outline = `
+      M130,30
+      c 18,0 32,14 32,32 s-14,32 -32,32 s-32,-14 -32,-32 s14,-32 32,-32 Z
+      M114,70 h32 v18 h-32 Z
+      M70,120
+      q 0,-38 38,-38 h44 q 38,0 38,38 v34 q 0,28 -20,42 q -34,24 -80,0 q -20,-14 -20,-42 Z
+      M44,110 q 0,-14 14,-14 h0 q 14,0 14,14 v100 q 0,14 -14,14 h0 q -14,0 -14,-14 Z
+      M216,110 q 0,-14 -14,-14 h0 q -14,0 -14,14 v100 q 0,14 14,14 h0 q 14,0 14,-14 Z
+      M78,204
+      q 0,-24 24,-24 h56 q 24,0 24,24 v24 q 0,22 -18,32 q -20,12 -44,12 q -24,0 -44,-12 q -18,-10 -18,-32 Z
+      M92,244 q 0,-12 12,-12 h6 q 12,0 12,12 v110 q 0,12 -12,12 h-6 q -12,0 -12,-12 Z
+      M138,244 q 0,-12 12,-12 h6 q 12,0 12,12 v110 q 0,12 -12,12 h-6 q -12,0 -12,-12 Z
+      M96,360 q 0,-10 10,-10 h4 q 10,0 10,10 v92 q 0,10 -10,10 h-4 q -10,0 -10,-10 Z
+      M140,360 q 0,-10 10,-10 h4 q 10,0 10,10 v92 q 0,10 -10,10 h-4 q -10,0 -10,-10 Z
+      M92,478 q 0,-8 8,-8 h8 q 8,0 8,8 v0 q 0,8 -8,8 h-8 q -8,0 -8,-8 Z
+      M136,478 q 0,-8 8,-8 h8 q 8,0 8,8 v0 q 0,8 -8,8 h-8 q -8,0 -8,-8 Z
+    `;
+
     svg.innerHTML = `
-      <defs>
-        ${clip}
-      </defs>
+      <defs>${clip}</defs>
 
-      <!-- Region rectangles, clipped to the realistic silhouette -->
-      <rect x="56" y="10"  width="128" height="86"  clip-path="url(#humanClip)"
-            fill="${fills["Head & Neck"]}"/>
-      <rect x="46" y="96"  width="148" height="116" clip-path="url(#humanClip)"
-            fill="${fills["Chest & Abdomen"]}"/>
-      <rect x="46" y="212" width="148" height="88"  clip-path="url(#humanClip)"
-            fill="${fills["Knee/Femur & Pelvis"]}"/>
-      <rect x="60" y="300" width="120" height="160" clip-path="url(#humanClip)"
-            fill="${fills["Lower Leg"]}"/>
+      <!-- Region bands clipped to silhouette -->
+      <!-- Head & Neck -->
+      <rect x="36" y="10"  width="188" height="86"  clip-path="url(#humanClip)" fill="${fills["Head & Neck"]}"/>
+      <!-- Chest & Abdomen -->
+      <rect x="28" y="96"  width="204" height="120" clip-path="url(#humanClip)" fill="${fills["Chest & Abdomen"]}"/>
+      <!-- Knee/Femur & Pelvis -->
+      <rect x="28" y="216" width="204" height="90"  clip-path="url(#humanClip)" fill="${fills["Knee/Femur & Pelvis"]}"/>
+      <!-- Lower Leg -->
+      <rect x="40" y="306" width="180" height="200" clip-path="url(#humanClip)" fill="${fills["Lower Leg"]}"/>
 
-      <!-- Visible human outline -->
-      <path d="${outlinePath}"
-            fill="none"
-            stroke="var(--ink)"
-            stroke-width="2.2"
-            stroke-linejoin="round"
-            stroke-linecap="round"/>
+      <!-- Visible silhouette outline -->
+      <path d="${outline}"
+            fill="none" stroke="var(--ink)"
+            stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
     `;
   }
 
