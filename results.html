@@ -15,14 +15,15 @@
       text-align: center;
       background: var(--bg);
     }
-    #sil{ width: clamp(240px, 36vw, 360px); margin:auto; display:block;}
-    .note{ color:#6b7280; font-size:14px; margin-top:8px;}
+    #sil{ width: clamp(260px, 40vw, 420px); margin:auto; display:block;}
+    .note{ color:#6b7280; font-size:14px; margin-top:10px;}
+    h2 { margin-bottom: 12px; }
   </style>
 </head>
 <body>
 
 <h2>Live Results</h2>
-<svg id="sil" viewBox="0 0 260 520" role="img" aria-label="Human silhouette with arms slightly out"></svg>
+<svg id="sil" viewBox="0 0 300 460" role="img" aria-label="Seated dummy silhouette (arms on thighs)"></svg>
 <div class="note">Colours update automatically as votes come in.</div>
 
 <script type="module">
@@ -64,83 +65,111 @@
   }
 
   function drawSilhouette(fills){
-  const svg = document.getElementById("sil");
+    const svg = document.getElementById("sil");
 
-  const clip = `
-    <clipPath id="humanClip" clipPathUnits="userSpaceOnUse">
+    /*  Silhouette: seated dummy, arms resting on thighs.
+        - Blocky geometric parts (rects + polygons) with small overlaps (no gaps).
+        - The clipPath is the union of components; rectangles for region bands sit behind and get clipped cleanly.
+        - Proportions chosen to match your reference posture.
+    */
 
-      <!-- HEAD -->
-      <rect x="105" y="15" width="50" height="60" rx="10" ry="10"/>
+    const clip = `
+      <clipPath id="humanClip" clipPathUnits="userSpaceOnUse">
+        <!-- HEAD (rounded rectangle) -->
+        <rect x="127" y="20" width="46" height="56" rx="10" ry="10"/>
+        <!-- NECK -->
+        <rect x="139" y="76" width="22" height="18"/>
 
-      <!-- NECK -->
-      <rect x="118" y="75" width="24" height="20" />
+        <!-- UPPER TORSO (slightly wider shoulders) -->
+        <polygon points="
+          92,96   208,96
+          208,156 92,156
+        "/>
 
-      <!-- UPPER TORSO -->
-      <rect x="80" y="95" width="100" height="70" rx="10" ry="10"/>
+        <!-- UPPER ARMS (angle slightly outward) -->
+        <polygon points="92,100 110,100 104,145 88,142"/>
+        <polygon points="208,100 190,100 196,145 212,142"/>
 
-      <!-- ARMS (resting on thighs) -->
-      <rect x="60"  y="105" width="20"  height="90" rx="6" ry="6"/>
-      <rect x="180" y="105" width="20"  height="90" rx="6" ry="6"/>
+        <!-- ELBOWS / FOREARMS (angle inward, down to thighs) -->
+        <polygon points="88,142 104,145 120,182 106,190 92,170 82,160"/>
+        <polygon points="212,142 196,145 180,182 194,190 208,170 218,160"/>
 
-      <!-- FOREARMS ANGLED -->
-      <polygon points="60,165 80,185 75,205 55,190" />
-      <polygon points="200,165 180,185 185,205 205,190" />
+        <!-- HANDS resting on thighs (small pads) -->
+        <rect x="100" y="188" width="18" height="14" rx="4" ry="4"/>
+        <rect x="182" y="188" width="18" height="14" rx="4" ry="4"/>
 
-      <!-- PELVIS -->
-      <rect x="95" y="165" width="70" height="50" rx="12" ry="12"/>
+        <!-- PELVIS (short block with slight round) -->
+        <rect x="120" y="160" width="60" height="30" rx="10" ry="10"/>
 
-      <!-- THIGHS (seated) -->
-      <rect x="70"  y="185" width="60" height="55" rx="12" ry="12"/>
-      <rect x="130" y="185" width="60" height="55" rx="12" ry="12"/>
+        <!-- THIGHS (wide, splayed slightly outward) -->
+        <polygon points="78,170 140,170 140,215 85,215 75,206 70,188"/>
+        <polygon points="222,170 160,170 160,215 215,215 225,206 230,188"/>
 
-      <!-- LOWER LEGS -->
-      <rect x="85"  y="240" width="35" height="110" rx="10" ry="10"/>
-      <rect x="140" y="240" width="35" height="110" rx="10" ry="10"/>
+        <!-- SHINS (vertical) -->
+        <rect x="101" y="215" width="30" height="120" rx="12" ry="12"/>
+        <rect x="169" y="215" width="30" height="120" rx="12" ry="12"/>
 
-      <!-- FEET -->
-      <ellipse cx="102" cy="355" rx="20" ry="12"/>
-      <ellipse cx="158" cy="355" rx="20" ry="12"/>
+        <!-- FEET (flat-ish rounded blocks) -->
+        <rect x="92"  y="335" width="48" height="22" rx="10" ry="10"/>
+        <rect x="168" y="335" width="48" height="22" rx="10" ry="10"/>
+      </clipPath>
+    `;
 
-    </clipPath>
-  `;
+    /* Outline: a clean continuous stroke approximating the same union.
+       (Drawn in sections but visually reads as one outline.)
+    */
+    const outline = `
+      M127,20 h46 v56 h-46 z         /* head */
+      M139,76 h22 v18 h-22 z         /* neck */
 
-  const outline = `
-    M130 15 h25 v60 h-25 Z               /* head */
-    M118 75 h24 v20 h-24 Z               /* neck */
-    M80 95 h100 v70 h-100 Z              /* upper torso */
-    M60 105 h20 v90 h-20 Z               /* left upper arm */
-    M180 105 h20 v90 h-20 Z              /* right upper arm */
-    M60 165 L80 185 L75 205 L55 190 Z    /* left forearm */
-    M200 165 L180 185 L185 205 L205 190 Z/* right forearm */
-    M95 165 h70 v50 h-70 Z               /* pelvis */
-    M70 185 h60 v55 h-60 Z               /* left thigh */
-    M130 185 h60 v55 h-60 Z              /* right thigh */
-    M85 240 h35 v110 h-35 Z              /* left shin */
-    M140 240 h35 v110 h-35 Z             /* right shin */
-    M82 355 a20 12 0 1 0 40 0 a20 12 0 1 0 -40 0 Z /* left foot */
-    M138 355 a20 12 0 1 0 40 0 a20 12 0 1 0 -40 0 Z/* right foot */
-  `;
+      /* torso block */
+      M92,96 H208 V156 H92 Z
 
-  svg.innerHTML = `
-     <defs>${clip}</defs>
+      /* left upper arm + forearm to thigh */
+      M92,100 L110,100 L104,145 L120,182 L106,190 L92,170 L82,160 Z
+      /* right upper arm + forearm to thigh */
+      M208,100 L190,100 L196,145 L180,182 L194,190 L208,170 L218,160 Z
 
-     <!-- REGION BANDS -->
-     <rect x="40" y="0"   width="180" height="120" clip-path="url(#humanClip)" fill="${fills["Head & Neck"]}" />
-     <rect x="40" y="120" width="180" height="100" clip-path="url(#humanClip)" fill="${fills["Chest & Abdomen"]}" />
-     <rect x="40" y="220" width="180" height="90"  clip-path="url(#humanClip)" fill="${fills["Knee/Femur & Pelvis"]}" />
-     <rect x="40" y="310" width="180" height="150" clip-path="url(#humanClip)" fill="${fills["Lower Leg"]}" />
+      /* hands */
+      M100,188 h18 v14 h-18 z
+      M182,188 h18 v14 h-18 z
 
-     <!-- OUTLINE -->
-     <path d="${outline}"
-           fill="none"
-           stroke="#000"
-           stroke-width="3"
-           stroke-linejoin="round"
-           stroke-linecap="round" />
-  `;
-}
+      /* pelvis */
+      M120,160 h60 v30 h-60 z
 
-  // initial + interval refresh
+      /* thighs */
+      M78,170 L140,170 L140,215 L85,215 L75,206 L70,188 Z
+      M222,170 L160,170 L160,215 L215,215 L225,206 L230,188 Z
+
+      /* shins */
+      M101,215 h30 v120 h-30 z
+      M169,215 h30 v120 h-30 z
+
+      /* feet */
+      M92,335 h48 v22 h-48 z
+      M168,335 h48 v22 h-48 z
+    `;
+
+    svg.innerHTML = `
+      <defs>${clip}</defs>
+
+      <!-- Region bands mapped to Option-1 -->
+      <!-- Head & Neck -->
+      <rect x="40" y="0"   width="220" height="110" clip-path="url(#humanClip)" fill="${fills["Head & Neck"]}"/>
+      <!-- Chest & Abdomen -->
+      <rect x="40" y="110" width="220" height="90"  clip-path="url(#humanClip)" fill="${fills["Chest & Abdomen"]}"/>
+      <!-- Knee/Femur & Pelvis -->
+      <rect x="40" y="200" width="220" height="90"  clip-path="url(#humanClip)" fill="${fills["Knee/Femur & Pelvis"]}"/>
+      <!-- Lower Leg -->
+      <rect x="40" y="290" width="220" height="170" clip-path="url(#humanClip)" fill="${fills["Lower Leg"]}"/>
+
+      <!-- Visible outline -->
+      <path d="${outline}"
+            fill="none" stroke="var(--ink)"
+            stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    `;
+  }
+
   refresh();
   setInterval(refresh, 1000);
 </script>
