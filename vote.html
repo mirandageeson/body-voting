@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Vote</title>
+  <style>
+    body { 
+      font-family: Arial; 
+      padding: 20px; 
+      text-align: center; 
+      background: #f7f7f7;
+    }
+    button, select { 
+      padding: 12px; 
+      margin: 6px; 
+      font-size: 18px; 
+      border-radius: 8px; 
+    }
+    #msg { margin-top: 20px; font-size: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<h2>Body Region Voting</h2>
+<p>Select a region and colour:</p>
+
+<select id="region">
+  <option value="Head & Neck">Head & Neck</option>
+  <option value="Chest & Abdomen">Chest & Abdomen</option>
+  <option value="Knee/Femur & Pelvis">Knee/Femur & Pelvis</option>
+  <option value="Lower Leg">Lower Leg</option>
+</select>
+
+<select id="colour">
+  <option value="green">Green</option>
+  <option value="yellow">Yellow</option>
+  <option value="orange">Orange</option>
+  <option value="brown">Brown</option>
+  <option value="red">Red</option>
+</select>
+
+<br/>
+<button id="voteBtn">Submit Vote</button>
+
+<p id="msg"></p>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+  // 🔧 REPLACE these two with your real Supabase values
+  const SUPABASE_URL = "https://awrcxuahafelpmhnwekm.supabase.co";
+  const SUPABASE_ANON = "sb_publishable_09CHP1nkTxUbdQgNNLmdSA_w3fV4tE-";
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  document.getElementById("voteBtn").onclick = async () => {
+    const region = document.getElementById("region").value;
+    const colour = document.getElementById("colour").value;
+
+    const deviceId = localStorage.getItem("deviceId") ||
+                     crypto.randomUUID?.() ||
+                     String(Date.now());
+    localStorage.setItem("deviceId", deviceId);
+
+    const { error } = await supabase.from("votes").insert({
+      region,
+      colour,
+      device_id: deviceId
+    });
+
+    document.getElementById("msg").textContent =
+      error ? "Something went wrong." : "Vote recorded!";
+  };
+</script>
+
+</body>
+</html>
