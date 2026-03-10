@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Results</title>
+  <style>
+    body { 
+      font-family: Arial; 
+      padding: 20px; 
+      text-align: center; 
+      background: #f7f7f7;
+    }
+    #sil { width: 260px; margin: auto; }
+  </style>
+</head>
+<body>
+
+<h2>Live Results</h2>
+<svg id="sil" viewBox="0 0 200 420"></svg>
+
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+  // 🔧 REPLACE these two with your real Supabase values
+  const SUPABASE_URL = "https://awrcxuahafelpmhnwekm.supabase.co";
+  const SUPABASE_ANON = "sb_publishable_09CHP1nkTxUbdQgNNLmdSA_w3fV4tE-";
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  const COLOURS = {
+    green: "#2ecc71",
+    yellow: "#f1c40f",
+    orange: "#e67e22",
+    brown: "#8e5c2a",
+    red: "#e74c3c"
+  };
+
+  async function refresh() {
+    const { data } = await supabase.from("votes").select("region,colour");
+
+    const regions = {
+      "Head & Neck": { green:0, yellow:0, orange:0, brown:0, red:0 },
+      "Chest & Abdomen": { green:0, yellow:0, orange:0, brown:0, red:0 },
+      "Knee/Femur & Pelvis": { green:0, yellow:0, orange:0, brown:0, red:0 },
+      "Lower Leg": { green:0, yellow:0, orange:0, brown:0, red:0 }
+    };
+
+    data.forEach(v => regions[v.region][v.colour]++);
+
+    const fills = {};
+    for (const region in regions) {
+      const votes = regions[region];
+      const top = Object.keys(votes).reduce((a,b) => votes[a] > votes[b] ? a : b);
+      fills[region] = COLOURS[top];
+    }
+
+    drawSilhouette(fills);
+  }
+
+  function drawSilhouette(fills) {
+    const svg = document.getElementById("sil");
+
+    svg.innerHTML = `
+      <defs>
+        <clipPath id="clip">
+          <circle cx="100" cy="34" r="18"/>
+          <path d="M82 52 Q100 60 118 52 L128 76 Q140 86 142 106 L144 160 Q142 178 122 188 Q100 196 78 188 Q58 178 56 160 L58 106 Q60 86 72 76 Z"/>
+          <path d="M72 76 Q56 86 50 108 L46 150 Q48 168 58 174 L64 168 Q66 150 64 120 Q66 100 72 88 Z"/>
+          <path d="M128 76 Q144 86 150 108 L154 150 Q152 168 142 174 L136 168 Q134 150 136 120 Q134 100 128 88 Z"/>
+          <path d="M62 188 Q100 200 138 188 L140 240 Q120 248 100 248 Q80 248 60 240 Z"/>
+          <path d="M74 240 L82 410 Q84 414 76 414 L64 412 Q58 410 64 402 Q74 390 72 360 L70 300 Q68 270 60 240 Z"/>
+          <path d="M126 240 L118 410 Q116 414 124 414 L136 412 Q142 410 136 402 Q126 390 128 360 L130 300 Q132 270 140 240 Z"/>
+        </clipPath>
+      </defs>
+
+      <rect x="40" y="10" width="120" height="70"  clip-path="url(#clip)" fill="${fills["Head & Neck"]}"/>
+      <rect x="40" y="80" width="120" height="105" clip-path="url(#clip)" fill="${fills["Chest & Abdomen"]}"/>
+      <rect x="40" y="185" width="120" height="70" clip-path="url(#clip)" fill="${fills["Knee/Femur & Pelvis"]}"/>
+      <rect x="40" y="255" width="120" height="160" clip-path="url(#clip)" fill="${fills["Lower Leg"]}"/>
+    `;
+  }
+
+  setInterval(refresh, 1000);
+  refresh();
+</script>
+
+</body>
+</html>
