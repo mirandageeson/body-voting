@@ -2,12 +2,12 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Results</title>
+  <title>Live Results</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root{
-      --ink:#111827;        /* outline stroke */
-      --bg:#f7f7f7;         /* page background */
+      --ink:#111827;  /* outline stroke */
+      --bg:#f7f7f7;   /* page background */
     }
     body{
       font-family: Arial, Helvetica, sans-serif;
@@ -15,23 +15,24 @@
       text-align: center;
       background: var(--bg);
     }
-    #sil{ width: clamp(240px, 36vw, 340px); margin:auto; display:block;}
-    .note{ color:#6b7280; font-size:14px; margin-top:8px;}
+    #sil{ width: clamp(260px, 40vw, 420px); margin:auto; display:block; }
+    .note{ color:#6b7280; font-size:14px; margin-top:10px; }
+    h2 { margin-bottom: 12px; }
   </style>
 </head>
 <body>
 
 <h2>Live Results</h2>
-<svg id="sil" viewBox="0 0 240 480" role="img" aria-label="Human silhouette"></svg>
+<!-- Use a taller viewBox matching the path coordinates below -->
+<svg id="sil" viewBox="0 0 260 560" role="img" aria-label="Standing human silhouette"></svg>
 <div class="note">Colours update automatically as votes come in.</div>
 
 <script type="module">
   import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
-  // ⬇️ REPLACE these two with your real Supabase values
-  const SUPABASE_URL = "https://awrcxuahafelpmhnwekm.supabase.co";
+  // Supabase credentials (keep your real ones here)
+  const SUPABASE_URL  = "https://awrcxuahafelpmhnwekm.supabase.co";
   const SUPABASE_ANON = "sb_publishable_09CHP1nkTxUbdQgNNLmdSA_w3fV4tE-";
-
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
   const COLOURS = {
@@ -44,127 +45,74 @@
 
   async function refresh(){
     const { data, error } = await supabase.from("votes").select("region,colour");
-    if (error) return; // optionally display an error banner
+    if (error) return;
 
     const regions = {
-      "Head & Neck":       { green:0,yellow:0,orange:0,brown:0,red:0 },
-      "Chest & Abdomen":   { green:0,yellow:0,orange:0,brown:0,red:0 },
-      "Knee/Femur & Pelvis":{ green:0,yellow:0,orange:0,brown:0,red:0 },
-      "Lower Leg":         { green:0,yellow:0,orange:0,brown:0,red:0 }
+      "Head & Neck":         { green:0,yellow:0,orange:0,brown:0,red:0 },
+      "Chest & Abdomen":     { green:0,yellow:0,orange:0,brown:0,red:0 },
+      "Knee/Femur & Pelvis": { green:0,yellow:0,orange:0,brown:0,red:0 },
+      "Lower Leg":           { green:0,yellow:0,orange:0,brown:0,red:0 }
     };
-    for(const v of data){ if(regions[v.region] && COLOURS[v.colour]!==undefined){ regions[v.region][v.colour]++; } }
+
+    for (const v of data) {
+      if (regions[v.region] && COLOURS[v.colour]) {
+        regions[v.region][v.colour]++;
+      }
+    }
 
     const fillMap = {};
-    for(const r in regions){
+    for (const r in regions) {
       const counts = regions[r];
-      const top = Object.keys(counts).reduce((a,b)=>counts[a] > counts[b] ? a : b);
+      const top = Object.keys(counts).reduce((a,b)=> counts[a] > counts[b] ? a : b);
       fillMap[r] = COLOURS[top];
     }
+
     drawSilhouette(fillMap);
   }
 
+  // --- ONE fully-enclosed silhouette path (feet angled outward; visible neck) ---
   function drawSilhouette(fills){
     const svg = document.getElementById("sil");
 
-    // --- Realistic front-view outline (single continuous stroke) -------------
-    // Geometry notes:
-    // - Head/neck: ellipse head with gentle neck taper
-    // - Thorax: rounded ribcage, natural shoulder slope
-    // - Waist & pelvis: inward waist, pelvic flare and inguinal curve
-    // - Femur block: straightish thighs down to knee band
-    // - Lower legs: tapered shins, small ankle/foot hints
-    const outlinePath = `
-      M120 22
-      c 18 0 33 15 33 33
-      s -15 33 -33 33
-      s -33 -15 -33 -33
-      s 15 -33 33 -33
-      Z
-      M95 88
-      q 25 8 50 0
-      q 16  -6 30 14
-      q 8   10 10 28
-      l 2 50
-      q -2 20 -18 30
-      q -26 16 -74 16
-      q -30 0 -50 -12
-      q -16 -9 -18 -30
-      l 2 -50
-      q 2 -18 10 -28
-      q 14 -20 30 -14
-      Z
-      M64 226
-      q 22 14 56 14
-      q 34 0 56 -14
-      l 3 50
-      q -2 14 -10 22
-      q -22 18 -49 18
-      q -27 0 -49 -18
-      q -8  -8 -10 -22
-      Z
-      M82 296
-      l 4 86
-      q 0 18 -10 34
-      q -6 10 8 12
-      l 14 2
-      q 10 2 8 -8
-      l -2 -130
-      Z
-      M158 296
-      l -4 86
-      q 0 18 10 34
-      q 6 10 -8 12
-      l -14 2
-      q -10 2 -8 -8
-      l 2 -130
-      Z
-    `;
-
-    // --- Clip path that matches the same human outline -----------------------
-    const clip = `
-      <clipPath id="humanClip" clipPathUnits="userSpaceOnUse">
-        <!-- head/neck -->
-        <path d="M120 22
-          c 18 0 33 15 33 33
-          s -15 33 -33 33
-          s -33 -15 -33 -33
-          s 15 -33 33 -33 Z" />
-        <!-- upper body shell (thorax/shoulders/abdomen) -->
-        <path d="M95 88 q 25 8 50 0 q 16 -6 30 14 q 8 10 10 28 l 2 50
-                 q -2 20 -18 30 q -26 16 -74 16 q -30 0 -50 -12 q -16 -9 -18 -30
-                 l 2 -50 q 2 -18 10 -28 q 14 -20 30 -14 Z" />
-        <!-- pelvis + femur junction -->
-        <path d="M64 226 q 22 14 56 14 q 34 0 56 -14 l 3 50
-                 q -2 14 -10 22 q -22 18 -49 18 q -27 0 -49 -18 q -8 -8 -10 -22 Z" />
-        <!-- left lower body + leg -->
-        <path d="M82 296 l 4 86 q 0 18 -10 34 q -6 10 8 12 l 14 2 q 10 2 8 -8 l -2 -130 Z" />
-        <!-- right lower body + leg -->
-        <path d="M158 296 l -4 86 q 0 18 10 34 q 6 10 -8 12 l -14 2 q -10 2 -8 -8 l 2 -130 Z" />
-      </clipPath>
+    const SILHOUETTE_D = `
+      M130 18
+      C 151 18 168 36 168 60
+      C 168 84 152 100 138 102
+      C 138 108 154 114 174 126
+      C 198 140 202 168 188 190
+      C 178 206 166 214 158 218
+      C 164 236 166 258 166 292
+      C 166 356 164 434 164 484
+      C 164 502 152 512 140 514
+      C 136 514 132 518 130 520
+      C 128 518 124 514 120 514
+      C 108 512 96 502 96 484
+      C 96 434 94 356 94 292
+      C 94 258 96 236 102 218
+      C 94 214 82 206 72 190
+      C 58 168 62 140 86 126
+      C 106 114 122 108 122 102
+      C 108 100 92 84 92 60
+      C 92 36 109 18 130 18 Z
     `;
 
     svg.innerHTML = `
       <defs>
-        ${clip}
+        <clipPath id="humanClip" clipPathUnits="userSpaceOnUse">
+          <path d="${SILHOUETTE_D}"/>
+        </clipPath>
       </defs>
 
-      <!-- Region rectangles, clipped to the realistic silhouette -->
-      <rect x="56" y="10"  width="128" height="86"  clip-path="url(#humanClip)"
-            fill="${fills["Head & Neck"]}"/>
-      <rect x="46" y="96"  width="148" height="116" clip-path="url(#humanClip)"
-            fill="${fills["Chest & Abdomen"]}"/>
-      <rect x="46" y="212" width="148" height="88"  clip-path="url(#humanClip)"
-            fill="${fills["Knee/Femur & Pelvis"]}"/>
-      <rect x="60" y="300" width="120" height="160" clip-path="url(#humanClip)"
-            fill="${fills["Lower Leg"]}"/>
+      <!-- Horizontal region bands (use *real* & in keys) -->
+      <rect x="40" y="0"   width="180" height="120" clip-path="url(#humanClip)" fill="${fills["Head & Neck"]}"/>
+      <rect x="40" y="120" width="180" height="120" clip-path="url(#humanClip)" fill="${fills["Chest & Abdomen"]}"/>
+      <rect x="40" y="240" width="180" height="130" clip-path="url(#humanClip)" fill="${fills["Knee/Femur & Pelvis"]}"/>
+      <rect x="40" y="370" width="180" height="190" clip-path="url(#humanClip)" fill="${fills["Lower Leg"]}"/>
 
-      <!-- Visible human outline -->
-      <path d="${outlinePath}"
-            fill="none"
-            stroke="var(--ink)"
-            stroke-width="2.2"
-            stroke-linejoin="round"
-            stroke-linecap="round"/>
+      <!-- Clean outline on top -->
+      <path d="${SILHOUETTE_D}"
+            fill="none" stroke="var(--ink)"
+            stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
     `;
   }
 
