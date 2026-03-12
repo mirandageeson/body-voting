@@ -72,13 +72,13 @@
   };
 
   // ---------------- RESET ALL VOTES ----------------
- async function resetVotes() {
+async function resetVotes() {
   if (!confirm("Are you sure you want to reset ALL votes?")) return;
 
   const btn = document.getElementById("resetVotesBtn");
   btn.disabled = true;
 
-  // Delete all rows in Supabase (works even without an id column)
+  // Delete all rows
   const { error } = await supabase
     .from("votes")
     .delete()
@@ -88,13 +88,11 @@
 
   if (error) {
     console.error(error);
-    alert("Error resetting votes. Check console.");
+    alert("Error resetting votes.");
     return;
   }
 
-  alert("All votes reset.");
-
-  // FIRST — redraw silhouette with empty (transparent) regions
+  // 1. Immediately clear silhouette colours
   drawSilhouette({
     "Head & Neck": "rgba(0,0,0,0)",
     "Chest & Abdomen": "rgba(0,0,0,0)",
@@ -102,8 +100,25 @@
     "Lower Leg": "rgba(0,0,0,0)"
   });
 
-  // THEN load fresh blank data (0 votes everywhere)
-  await refresh();
+  // 2. Force a fresh fetch of EMPTY data
+  const { data, error: fetchErr } = await supabase
+    .from("votes")
+    .select("region, colour");
+
+  if (fetchErr) console.error(fetchErr);
+
+  // 3. Because there are no votes, construct a blank fill map
+  const blankFill = {
+    "Head & Neck": "rgba(0,0,0,0)",
+    "Chest & Abdomen": "rgba(0,0,0,0)",
+    "Knee/Femur & Pelvis": "rgba(0,0,0,0)",
+    "Lower Leg": "rgba(0,0,0,0)"
+  };
+
+  // 4. Draw dummy blank again (not recoloured from stale values)
+  drawSilhouette(blankFill);
+
+  alert("Votes reset.");
 }
 
 
