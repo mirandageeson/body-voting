@@ -20,23 +20,27 @@
     .note{ color:#6b7280; font-size:14px; margin-top:10px; }
     h2 { margin-bottom: 12px; }
 
-    /* reset icon button */
+    /* Reset icon button */
     #resetVotesBtn {
       position: absolute;
       top: 16px;
       right: 16px;
       background: none;
-      border: none;
+      border: 1px solid transparent;
+      border-radius: 8px;
       cursor: pointer;
       padding: 6px;
     }
+    #resetVotesBtn:hover { border-color: #ddd; }
+    #resetVotesBtn[disabled] { opacity: .5; cursor: not-allowed; }
+    #resetVotesBtn svg { display:block; }
     #resetVotesBtn:hover svg { stroke: #000; }
   </style>
 </head>
 <body>
 
-<!-- Reset button (optional; remove this block if you don't want it yet) -->
-<button id="resetVotesBtn" title="Reset all votes">
+<!-- Reset button (top-right) -->
+<button id="resetVotesBtn" title="Reset all votes" aria-label="Reset all votes">
   <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
        stroke="#555" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
     <polyline points="1 4 1 10 7 10"></polyline>
@@ -45,14 +49,16 @@
 </button>
 
 <h2>Live Results</h2>
+
 <!-- ViewBox matches your Figma coordinates -->
 <svg id="sil" viewBox="0 0 1505 4279" preserveAspectRatio="xMidYMid meet"></svg>
+
 <div class="note">Colours update automatically as votes come in.</div>
 
 <script type="module">
   import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
-  // Supabase credentials
+  // Supabase credentials (your anon/public key is fine here)
   const SUPABASE_URL  = "https://awrcxuahafelpmhnwekm.supabase.co";
   const SUPABASE_ANON = "sb_publishable_09CHP1nkTxUbdQgNNLmdSA_w3fV4tE-";
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
@@ -65,26 +71,40 @@
     red   : "#e74c3c"
   };
 
-  // ----- Reset votes (icon button) -----
+  // ---------------- RESET ALL VOTES ----------------
   async function resetVotes() {
     if (!confirm("Are you sure you want to reset ALL votes?")) return;
-    const { error } = await supabase.from("votes").delete().neq("id", 0);
+
+    const btn = document.getElementById("resetVotesBtn");
+    btn.disabled = true;
+
+    // Robust "delete everything" filter that doesn't require an id column.
+    // It matches all rows where region is NOT NULL (i.e., all your valid rows).
+    const { error } = await supabase
+      .from("votes")
+      .delete()
+      .not("region", "is", null);
+
+    btn.disabled = false;
+
     if (error) {
-      alert("Error resetting votes.");
       console.error(error);
+      alert("Error resetting votes. See console for details.");
       return;
     }
-    alert("Votes reset.");
-    refresh();            // redraw with empty results
-  }
-  document.getElementById("resetVotesBtn")?.addEventListener("click", resetVotes);
 
-  // ----- Fetch + compute fills -----
+    alert("All votes reset.");
+    await refresh();      // redraw silhouette empty
+  }
+
+  document.getElementById("resetVotesBtn").addEventListener("click", resetVotes);
+
+  // ---------------- FETCH + COMPUTE FILLS ----------------
   async function refresh(){
     const { data, error } = await supabase.from("votes").select("region,colour");
     if (error) { console.error(error); return; }
 
-    // IMPORTANT: use real "&" in keys (NOT &amp;)
+    // IMPORTANT: use real "&" in keys (not &amp;)
     const regions = {
       "Head & Neck":         { green:0,yellow:0,orange:0,brown:0,red:0 },
       "Chest & Abdomen":     { green:0,yellow:0,orange:0,brown:0,red:0 },
@@ -108,7 +128,7 @@
     drawSilhouette(fillMap);
   }
 
-  // ----- Draw silhouette + bands -----
+  // ---------------- DRAW SILHOUETTE + BANDS ----------------
   function drawSilhouette(fills){
     const svg = document.getElementById("sil");
 
@@ -125,7 +145,7 @@ M810.401 5.14258L852.698 25.7754L895.561 56.0312L896.165 56.457L917.628 82.5205L
     const PAD = VB_H * 0.06;
     const usable = VB_H - PAD * 2;
 
-    // Band proportions (adjust if you like)
+    // Band proportions
     const H1 = usable * 0.08;  // Head & neck
     const H2 = usable * 0.26;  // Chest & abdomen
     const H3 = usable * 0.26;  // Pelvis + upper legs
@@ -136,7 +156,6 @@ M810.401 5.14258L852.698 25.7754L895.561 56.0312L896.165 56.457L917.628 82.5205L
     const Y3 = Y2 + H2;
     const Y4 = Y3 + H3;
 
-    // IMPORTANT: real SVG tags (not &lt; &gt;)
     svg.innerHTML = `
       <defs>
         <clipPath id="humanClip" clipPathUnits="userSpaceOnUse">
