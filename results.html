@@ -152,6 +152,20 @@ async function resetVotes() {
     drawSilhouette(fillMap);
   }
 
+  // If absolutely no votes at all, show white silhouette
+const totalVotes = Object.values(regions).reduce(
+  (sum, r) => sum + r.green + r.yellow + r.orange + r.brown + r.red, 0
+);
+if (totalVotes === 0) {
+  drawSilhouette({
+    "Head & Neck": "#ffffff",
+    "Chest & Abdomen": "#ffffff",
+    "Knee/Femur & Pelvis": "#ffffff",
+    "Lower Leg": "#ffffff"
+  });
+  return; // stop here so we don't overpaint with colours
+}
+
   // ---------------- DRAW SILHOUETTE + BANDS ----------------
   function drawSilhouette(fills){
     const svg = document.getElementById("sil");
