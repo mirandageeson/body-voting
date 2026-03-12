@@ -78,7 +78,9 @@ async function resetVotes() {
   const btn = document.getElementById("resetVotesBtn");
   btn.disabled = true;
 
-  // Delete all rows (works without an 'id' column)
+  // Pause auto-refresh while we reset and repaint
+  if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+
   const { error } = await supabase
     .from("votes")
     .delete()
@@ -89,10 +91,12 @@ async function resetVotes() {
   if (error) {
     console.error(error);
     alert("Error resetting votes. Check console.");
+    // Resume timer anyway
+    refreshTimer = setInterval(refresh, 1000);
     return;
   }
 
-  // 1) Immediately paint the silhouette white (not transparent)
+  // Paint white and keep it
   const whiteFill = {
     "Head & Neck": "#ffffff",
     "Chest & Abdomen": "#ffffff",
@@ -101,17 +105,19 @@ async function resetVotes() {
   };
   drawSilhouette(whiteFill);
 
-  // 2) Force a fresh fetch (now empty) and draw again to keep white
-  const { data, error: fetchErr } = await supabase
+  // Force one clean fetch (should be empty) and draw white again
+  const { error: fetchErr } = await supabase
     .from("votes")
     .select("region, colour");
 
   if (fetchErr) console.error(fetchErr);
 
-  // With no votes, stay white
   drawSilhouette(whiteFill);
 
   alert("All votes reset and dummy cleared to white.");
+
+  // Resume the auto-refresh loop
+  refreshTimer = setInterval(refresh, 1000);
 }
 
 
