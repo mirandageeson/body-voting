@@ -72,30 +72,40 @@
   };
 
   // ---------------- RESET ALL VOTES ----------------
-  async function resetVotes() {
-    if (!confirm("Are you sure you want to reset ALL votes?")) return;
+ async function resetVotes() {
+  if (!confirm("Are you sure you want to reset ALL votes?")) return;
 
-    const btn = document.getElementById("resetVotesBtn");
-    btn.disabled = true;
+  const btn = document.getElementById("resetVotesBtn");
+  btn.disabled = true;
 
-    // Robust "delete everything" filter that doesn't require an id column.
-    // It matches all rows where region is NOT NULL (i.e., all your valid rows).
-    const { error } = await supabase
-      .from("votes")
-      .delete()
-      .not("region", "is", null);
+  // Delete all rows in Supabase (works even without an id column)
+  const { error } = await supabase
+    .from("votes")
+    .delete()
+    .not("region", "is", null);
 
-    btn.disabled = false;
+  btn.disabled = false;
 
-    if (error) {
-      console.error(error);
-      alert("Error resetting votes. See console for details.");
-      return;
-    }
-
-    alert("All votes reset.");
-    await refresh();      // redraw silhouette empty
+  if (error) {
+    console.error(error);
+    alert("Error resetting votes. Check console.");
+    return;
   }
+
+  alert("All votes reset.");
+
+  // FIRST — redraw silhouette with empty (transparent) regions
+  drawSilhouette({
+    "Head & Neck": "rgba(0,0,0,0)",
+    "Chest & Abdomen": "rgba(0,0,0,0)",
+    "Knee/Femur & Pelvis": "rgba(0,0,0,0)",
+    "Lower Leg": "rgba(0,0,0,0)"
+  });
+
+  // THEN load fresh blank data (0 votes everywhere)
+  await refresh();
+}
+
 
   document.getElementById("resetVotesBtn").addEventListener("click", resetVotes);
 
