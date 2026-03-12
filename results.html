@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     :root{
-      --ink:#111827;
-      --bg:#f7f7f7;
+      --ink:#111827;  /* outline stroke */
+      --bg:#f7f7f7;   /* page background */
     }
     body{
       font-family: Arial, Helvetica, sans-serif;
@@ -16,19 +16,11 @@
       background: var(--bg);
       position: relative;
     }
-    #sil {
-      width: clamp(200px, 22vw, 300px);
-      margin:auto;
-      display:block;
-    }
-    .note{
-      color:#6b7280;
-      font-size:14px;
-      margin-top:10px;
-    }
+    #sil { width: clamp(200px, 22vw, 300px); margin:auto; display:block; }
+    .note{ color:#6b7280; font-size:14px; margin-top:10px; }
     h2 { margin-bottom: 12px; }
 
-    /* --- RESET ICON BUTTON --- */
+    /* reset icon button */
     #resetVotesBtn {
       position: absolute;
       top: 16px;
@@ -38,14 +30,12 @@
       cursor: pointer;
       padding: 6px;
     }
-    #resetVotesBtn:hover svg {
-      stroke: #000;
-    }
+    #resetVotesBtn:hover svg { stroke: #000; }
   </style>
 </head>
 <body>
 
-<!-- Reset button (top-right corner) -->
+<!-- Reset button (optional; remove this block if you don't want it yet) -->
 <button id="resetVotesBtn" title="Reset all votes">
   <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
        stroke="#555" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
@@ -55,14 +45,14 @@
 </button>
 
 <h2>Live Results</h2>
-
+<!-- ViewBox matches your Figma coordinates -->
 <svg id="sil" viewBox="0 0 1505 4279" preserveAspectRatio="xMidYMid meet"></svg>
-
 <div class="note">Colours update automatically as votes come in.</div>
 
 <script type="module">
   import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
+  // Supabase credentials
   const SUPABASE_URL  = "https://awrcxuahafelpmhnwekm.supabase.co";
   const SUPABASE_ANON = "sb_publishable_09CHP1nkTxUbdQgNNLmdSA_w3fV4tE-";
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
@@ -75,10 +65,9 @@
     red   : "#e74c3c"
   };
 
-  // --- RESET ALL VOTES FUNCTION ---
+  // ----- Reset votes (icon button) -----
   async function resetVotes() {
     if (!confirm("Are you sure you want to reset ALL votes?")) return;
-
     const { error } = await supabase.from("votes").delete().neq("id", 0);
     if (error) {
       alert("Error resetting votes.");
@@ -86,16 +75,16 @@
       return;
     }
     alert("Votes reset.");
-    refresh();
+    refresh();            // redraw with empty results
   }
+  document.getElementById("resetVotesBtn")?.addEventListener("click", resetVotes);
 
-  document.getElementById("resetVotesBtn").addEventListener("click", resetVotes);
-
-  // --- FETCH + CALCULATE REGION WINNERS ---
+  // ----- Fetch + compute fills -----
   async function refresh(){
     const { data, error } = await supabase.from("votes").select("region,colour");
-    if (error) return;
+    if (error) { console.error(error); return; }
 
+    // IMPORTANT: use real "&" in keys (NOT &amp;)
     const regions = {
       "Head & Neck":         { green:0,yellow:0,orange:0,brown:0,red:0 },
       "Chest & Abdomen":     { green:0,yellow:0,orange:0,brown:0,red:0 },
@@ -119,9 +108,58 @@
     drawSilhouette(fillMap);
   }
 
-  // --- DRAW YOUR SILHOUETTE + REGIONS ---
+  // ----- Draw silhouette + bands -----
   function drawSilhouette(fills){
     const svg = document.getElementById("sil");
 
+    // Your exported Figma silhouette (single closed path)
     const SILHOUETTE_D = `
-      M810.401 5.14258L852.698 25.7754L895.561 56.0312L896.165 56.457L917.628 82.5205L949.722 121.343L953.869 169.553L953.889 169.788V389.591L925.24 460.701L874.336 531.184L897.102 624.146L1086.27 711.833L1207.07 744.047L1294.89 822.163L1335.74 908.976L1347.33 1002.19L1400.44 1293.82L1381.03 1475.53L1432.28 1580.03L1447.37 1756.05L1447.39 1756.29V1949.25L1496.89 2122.75V2263.82L1446.77 2432.9L1358.51 2522.93L1385.89 2362.56V2280.32L1366.26 2213.82L1347.23 2264.44L1337.91 2323.47L1307.2 2341.22L1282.73 2263.36L1305.07 2145.54L1335.97 2063.15L1243.35 1845.23L1169.68 1677.2L1196.2 1530.59L1135.7 1378.68L1100.89 1477.47V1655.94L1140.89 1842.44V2062.55L1183.81 2309.08L1183.89 2309.55V2525.46L1140.89 2796.96V3463.46L1100.82 3717.38L1100.76 3717.76L1053.89 3870.85V4002.08L1100.46 4134.37L1142.7 4218.85L1064.77 4260.52H915.371L862.889 4178.13V3955.5L896.389 3869V3716.52C896.389 3701.33 891.001 3675.31 884.004 3648.41C877.062 3621.72 868.725 3594.84 863.174 3578.27L862.889 3577.42V3063.7L822.889 2903.7V2797.34L776.486 2644.16L759.929 2507.18L759.928 2507.18L744.995 2382.32L735.346 2458.71L735.332 2458.82L709.386 2614.99C709.283 2639.17 701.298 2666.1 693.656 2691.56L693.319 2692.68C685.607 2718.36 678.389 2742.41 678.389 2762.52C678.389 2784.41 674.032 2822 667.479 2856.23C664.196 2873.38 660.332 2889.86 656.128 2903.22C654.027 2909.91 651.811 2915.91 649.499 2920.88C647.624 2924.9 645.553 2928.53 643.237 2931.31L627.389 3150.23V3543.26L613.869 3703.99L613.863 3704.06L613.854 3704.14L598.389 3841.34V3919.58L627.389 4002.09V4219.75L537.32 4270.02H442.477L441.238 4269.34C439.603 4268.44 437.026 4267.7 433.299 4267.16C429.641 4266.63 425.325 4266.36 420.449 4266.15C410.895 4265.74 399.251 4265.58 388.296 4263.88C377.336 4262.19 366.172 4258.83 357.717 4251.42C349.021 4243.8 343.889 4232.51 343.889 4216.52C343.889 4185.04 361.392 4159.48 378.189 4142.15C386.644 4133.42 395.082 4126.61 401.403 4121.98C404.569 4119.66 407.216 4117.87 409.086 4116.66C409.685 4116.28 410.206 4115.95 410.638 4115.68L442.889 4048.77V3957.2L383.071 3717.93L342.889 3577.29V3149.58L342.96 3149.15L382.778 2903.26L343.053 2744.36L342.981 2744.07L342.94 2743.78L311.389 2515.4V2362.62L335.963 2195.62L335.982 2195.51L360.907 2062.41L366.389 1919.42V1814.62L382.947 1702.22L401.313 1568.2L382.889 1477.08V1411.08L353.889 1338.58V1363.5L335.711 1468.02L314.786 1520.83L295.271 1720L232.002 1855.07L
+M810.401 5.14258L852.698 25.7754L895.561 56.0312L896.165 56.457L917.628 82.5205L949.722 121.343L953.869 169.553L953.889 169.788V389.591L925.24 460.701L874.336 531.184L897.102 624.146L1086.27 711.833L1207.07 744.047L1294.89 822.163L1335.74 908.976L1347.33 1002.19L1400.44 1293.82L1381.03 1475.53L1432.28 1580.03L1447.37 1756.05L1447.39 1756.29V1949.25L1496.89 2122.75V2263.82L1446.77 2432.9L1358.51 2522.93L1385.89 2362.56V2280.32L1366.26 2213.82L1347.23 2264.44L1337.91 2323.47L1307.2 2341.22L1282.73 2263.36L1305.07 2145.54L1335.97 2063.15L1243.35 1845.23L1169.68 1677.2L1196.2 1530.59L1135.7 1378.68L1100.89 1477.47V1655.94L1140.89 1842.44V2062.55L1183.81 2309.08L1183.89 2309.55V2525.46L1140.89 2796.96V3463.46L1100.82 3717.38L1100.76 3717.76L1053.89 3870.85V4002.08L1100.46 4134.37L1142.7 4218.85L1064.77 4260.52H915.371L862.889 4178.13V3955.5L896.389 3869V3716.52C896.389 3701.33 891.001 3675.31 884.004 3648.41C877.062 3621.72 868.725 3594.84 863.174 3578.27L862.889 3577.42V3063.7L822.889 2903.7V2797.34L776.486 2644.16L759.929 2507.18L759.928 2507.18L744.995 2382.32L735.346 2458.71L735.332 2458.82L709.386 2614.99C709.283 2639.17 701.298 2666.1 693.656 2691.56L693.319 2692.68C685.607 2718.36 678.389 2742.41 678.389 2762.52C678.389 2784.41 674.032 2822 667.479 2856.23C664.196 2873.38 660.332 2889.86 656.128 2903.22C654.027 2909.91 651.811 2915.91 649.499 2920.88C647.624 2924.9 645.553 2928.53 643.237 2931.31L627.389 3150.23V3543.26L613.869 3703.99L613.863 3704.06L613.854 3704.14L598.389 3841.34V3919.58L627.389 4002.09V4219.75L537.32 4270.02H442.477L441.238 4269.34C439.603 4268.44 437.026 4267.7 433.299 4267.16C429.641 4266.63 425.325 4266.36 420.449 4266.15C410.895 4265.74 399.251 4265.58 388.296 4263.88C377.336 4262.19 366.172 4258.83 357.717 4251.42C349.021 4243.8 343.889 4232.51 343.889 4216.52C343.889 4185.04 361.392 4159.48 378.189 4142.15C386.644 4133.42 395.082 4126.61 401.403 4121.98C404.569 4119.66 407.216 4117.87 409.086 4116.66C409.685 4116.28 410.206 4115.95 410.638 4115.68L442.889 4048.77V3957.2L383.071 3717.93L342.889 3577.29V3149.58L342.96 3149.15L382.778 2903.26L343.053 2744.36L342.981 2744.07L342.94 2743.78L311.389 2515.4V2362.62L335.963 2195.62L335.982 2195.51L360.907 2062.41L366.389 1919.42V1814.62L382.947 1702.22L401.313 1568.2L382.889 1477.08V1411.08L353.889 1338.58V1363.5L335.711 1468.02L314.786 1520.83L295.271 1720L232.002 1855.07L199.604 1951.77L199.521 1952.02L199.414 1952.26L155.707 2050.48L194.889 2195.8V2280.03L183.285 2342.12L154.898 2323.67L132.017 2264.38L124.59 2205.64L103.959 2287.43L113.82 2383.58L144.213 2506.19L95.4033 2512.45L56.1026 2442.23L2.88869 2350.5V2156.52C2.88869 2136.69 1.28651 2120.49 0.45803 2103.54C-0.364845 2086.71 -0.374348 2069.66 2.95998 2049.14C5.58257 2033 9.61988 2012.81 14.7197 1994.08C19.5754 1976.25 25.5574 1959.11 32.5069 1948.21L40.8897 1834.31C40.9121 1819.55 43.1905 1797.13 45.4131 1773.5C47.6665 1749.54 49.8887 1724.13 49.8887 1703.02V1576.52C49.8887 1559.26 57.5381 1535.84 68.2237 1514.56C78.3389 1494.41 91.7212 1475.07 105.272 1463.95L96.3672 1256.15L96.4776 1255.54C103.163 1218.77 115.765 1164.6 125.959 1116.68C131.072 1092.64 135.586 1070.15 138.496 1052.04C139.952 1042.97 140.994 1035.09 141.514 1028.69C142.045 1022.14 141.986 1017.63 141.489 1015.07C140.67 1010.85 140.865 1005.09 141.606 998.594C142.365 991.955 143.763 984.029 145.653 975.228C149.436 957.615 155.256 936.179 162.12 913.916C175.826 869.466 193.865 821.175 208.508 792.989L209.305 791.455L336.323 724.897L451.679 691.294L578.47 645.412L616.222 594.92L610.555 532.113L548.596 451.665L536.428 343.677L524.336 249.968L536.45 169.209L536.484 168.979L548.777 117.247L577.776 75.3018L618.727 40.4941L665.863 13.8516L702.989 5.08594L755.884 0L810.401 5.14258Z
+`.trim();
+
+    // Coordinate system from your Figma export
+    const VB_W = 1505;
+    const VB_H = 4279;
+
+    // Top/bottom padding inside the bands
+    const PAD = VB_H * 0.06;
+    const usable = VB_H - PAD * 2;
+
+    // Band proportions (adjust if you like)
+    const H1 = usable * 0.08;  // Head & neck
+    const H2 = usable * 0.26;  // Chest & abdomen
+    const H3 = usable * 0.26;  // Pelvis + upper legs
+    const H4 = usable * 0.40;  // Lower legs
+
+    const Y1 = PAD;
+    const Y2 = Y1 + H1;
+    const Y3 = Y2 + H2;
+    const Y4 = Y3 + H3;
+
+    // IMPORTANT: real SVG tags (not &lt; &gt;)
+    svg.innerHTML = `
+      <defs>
+        <clipPath id="humanClip" clipPathUnits="userSpaceOnUse">
+          <path d="${SILHOUETTE_D}"/>
+        </clipPath>
+      </defs>
+
+      <!-- Horizontal region bands -->
+      <rect x="0" y="${Y1}" width="${VB_W}" height="${H1}" clip-path="url(#humanClip)" fill="${fills["Head & Neck"]}"/>
+      <rect x="0" y="${Y2}" width="${VB_W}" height="${H2}" clip-path="url(#humanClip)" fill="${fills["Chest & Abdomen"]}"/>
+      <rect x="0" y="${Y3}" width="${VB_W}" height="${H3}" clip-path="url(#humanClip)" fill="${fills["Knee/Femur & Pelvis"]}"/>
+      <rect x="0" y="${Y4}" width="${VB_W}" height="${H4}" clip-path="url(#humanClip)" fill="${fills["Lower Leg"]}"/>
+
+      <!-- Outline -->
+      <path d="${SILHOUETTE_D}" fill="none" stroke="var(--ink)" stroke-width="36"
+            stroke-linejoin="round" stroke-linecap="round"/>
+    `;
+  }
+
+  // Initial + interval refresh
+  refresh();
+  setInterval(refresh, 1000);
+</script>
+
+</body>
+</html>
